@@ -1,4 +1,4 @@
-name: Free RDP (New Ngrok 3)
+name: Free RDP (No Card)
 
 on:
   workflow_dispatch:
@@ -8,18 +8,17 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download New Ngrok v3
+    - name: Download Cloudflared
       run: |
-        Invoke-WebRequest -Uri https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-        Expand-Archive ngrok.zip -DestinationPath ngrok
+        Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
 
-    - name: Connect Ngrok
-      working-directory: ./ngrok
+    - name: Start Tunnel
       run: |
-        ./ngrok.exe config add-authtoken 2vO3AQdR1ETfyhAr3kW0OqM9Xx3_3T7RHt6oR2AHX7zqXimWa
-        ./ngrok.exe tcp 3389
+        Start-Process -NoNewWindow -FilePath ./cloudflared.exe -ArgumentList "tunnel --url rdp://localhost:3389"
 
     - name: Enable RDP
       run: |
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name 'fDenyTSConnections' -Value 0
         Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+    - name: Wait for Connection
+      run: Start-Sleep -Seconds 60
