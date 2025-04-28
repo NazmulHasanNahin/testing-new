@@ -1,0 +1,35 @@
+name: Free RDP (No Card)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Download Cloudflared
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "cloudflared.exe"
+
+    - name: Enable RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name 'fDenyTSConnections' -Value 0
+        Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+        # Set a temporary password for the runneradmin user
+        $password = ConvertTo-SecureString "TempPass123!" -AsPlainText -Force
+        Set-LocalUser -Name "runneradmin" -Password $password
+
+    - name: Start Cloudflared Tunnel
+      run: |
+        # Run in background and save tunnel URL to file
+        Start-Process -NoNewWindow -FilePath ".\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389 --logfile tunnel.log"
+        # Wait briefly for tunnel to initialize
+        Start-Sleep -Seconds 15
+        # Display the tunnel URL (from logs)
+        Get-Content "tunnel.log" | Select-String "url=https://" | ForEach-Object { Write-Host "RDP Connection URL: $_" }
+
+    - name: Keep Alive
+      run: |
+        # Keep the runner active for 6 hours (maximum)
+        Start-Sleep -Seconds 21600
